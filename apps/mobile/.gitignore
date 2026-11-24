@@ -1,0 +1,15 @@
+.dart_tool/
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+pubspec.lock
+# Platforma papkalari `flutter create` bilan yaratiladi (README ga qarang)
+/android/
+/ios/
+/web/
+/windows/
+/linux/
+/macos/
+.metadata
+*.iml
+.idea/
