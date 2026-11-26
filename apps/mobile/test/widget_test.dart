@@ -1,5 +1,6 @@
 import 'package:anc_mobile/widgets/otp_countdown.dart';
 import 'package:anc_mobile/widgets/question_input.dart';
+import 'package:anc_mobile/widgets/speaking_result.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -53,6 +54,36 @@ void main() {
     await tester.tap(find.text('Kodni qayta yuborish'));
     await tester.pump();
     expect(resent, 1);
+  });
+
+  testWidgets('til darajasi: baholanmagan ko\'rsatkich va yozilgan javoblar ochiq aytiladi', (tester) async {
+    tester.view.physicalSize = const Size(1000, 2400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(const MaterialApp(
+      home: Scaffold(
+        body: SpeakingResultView(session: {
+          'language': 'en',
+          'answers': 4,
+          'spokenAnswers': 1,
+          'result': {
+            'level': 'B1',
+            'fluency': 55,
+            'vocabulary': 48,
+            'grammar': null,
+            'coherence': null,
+            'summary': 'Xulosa',
+            'strengths': ['Ravon'],
+            'improvements': ['Kengaytiring'],
+            'corrections': [],
+          },
+        }),
+      ),
+    ));
+    expect(find.text('B1'), findsOneWidget);
+    expect(find.text('55 / 100'), findsOneWidget);
+    expect(find.text('baholanmadi'), findsNWidgets(2));
+    expect(find.textContaining('4 ta javobdan 3 tasi yozib kiritilgan'), findsOneWidget);
   });
 
   testWidgets('numeric javob matn sifatida yuboriladi', (tester) async {

@@ -12,6 +12,7 @@ import { toReviewView, versionWithOptions } from '../questions/question-view';
 import { QuestionsModule } from '../questions/questions.module';
 import { AiContentController, AiContentService } from './ai-content';
 import { AiGatewayClient, assertDailyAiLimit } from './ai-gateway.client';
+import { SpeakingController, SpeakingService } from './speaking';
 
 export class CreateConversationDto {
   @ApiPropertyOptional() @IsOptional() @IsUUID() subjectId?: string;
@@ -143,7 +144,7 @@ export class AiTutorController {
 
 @Module({
   imports: [ExamModule, QuestionsModule],
-  controllers: [AiTutorController, AiContentController],
-  providers: [AiTutorService, AiGatewayClient, AiContentService],
+  controllers: [AiTutorController, AiContentController, SpeakingController],
+  providers: [AiTutorService, AiGatewayClient, AiContentService, SpeakingService],
 })
 export class AiTutorModule {}

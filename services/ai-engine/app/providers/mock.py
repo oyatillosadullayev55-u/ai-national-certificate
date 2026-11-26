@@ -79,6 +79,62 @@ def _mock_explanation(solution: str) -> str:
     )
 
 
+_SPEAKING_QUESTIONS = {
+    "en": [
+        "Nice to meet you! What do you usually do on a normal day?",
+        "Interesting. Can you describe your favourite place and explain why you like it?",
+        "Tell me about something memorable that happened to you last year.",
+        "What is your opinion about learning online? Why do you think so?",
+        "If you could change one thing in your city, what would it be and why?",
+    ],
+    "ru": [
+        "Очень приятно! Расскажите, как обычно проходит ваш день?",
+        "Интересно. Опишите ваше любимое место и объясните, почему оно вам нравится.",
+        "Расскажите о запоминающемся событии, которое произошло в прошлом году.",
+        "Что вы думаете об онлайн-обучении? Почему?",
+        "Если бы вы могли изменить что-то в своём городе, что бы это было и почему?",
+    ],
+    "uz": [
+        "Tanishganimdan xursandman! Kuningiz odatda qanday o'tadi?",
+        "Qiziq. Sevimli joyingizni tasvirlab, nega yoqishini tushuntiring.",
+        "O'tgan yili bo'lgan esda qolarli voqea haqida gapirib bering.",
+        "Onlayn ta'lim haqida fikringiz qanday? Nega shunday deb o'ylaysiz?",
+        "Shahringizda bir narsani o'zgartira olsangiz, nimani va nega o'zgartirardingiz?",
+    ],
+}
+
+
+def _mock_assessment(ctx: dict) -> dict:
+    """Grammatikani tekshira olmaydi: faqat javob uzunligi va so'z boyligidan taxminiy baho."""
+    answers = [t.get("text", "") for t in ctx.get("transcript", []) if t.get("speaker") == "student"]
+    # Apostrofli o'zbekcha so'zlar (o'qish) bitta so'z hisoblanadi
+    words = [w for a in answers for w in re.findall(r"[^\W\d_]+(?:['\u2018\u2019\u02bb-][^\W\d_]*)*", a.lower())]
+    fluency = min(100, round(len(words) / max(1, len(answers)) * 2.5))  # 40 so'zlik javoblar — 100
+    vocabulary = min(100, round(len(set(words)) / 1.5))  # 150 xil so'z — 100
+    overall = (fluency + vocabulary) / 2
+    levels = ["A1", "A2", "B1", "B2"]
+    by_score = sum(overall >= limit for limit in (15, 30, 55))
+    # Kam material bilan yuqori daraja berilmaydi; grammatika tekshirilmagani uchun mock B2 dan oshmaydi
+    by_evidence = sum(len(words) >= minimum for minimum in (15, 80, 200))
+    return {
+        "level": levels[min(by_score, by_evidence)],
+        "fluency": fluency,
+        "vocabulary": vocabulary,
+        "grammar": None,
+        "coherence": None,
+        "summary": (
+            "[Namuna baho — AI kaliti ulanmagan] Daraja faqat javoblar uzunligi va so'z boyligidan taxminan hisoblandi: "
+            f"{len(answers)} ta javob, {len(words)} ta so'z. Grammatika va mazmun tekshirilmadi."
+        ),
+        "strengths": ["Suhbatni oxirigacha davom ettirdingiz."],
+        "improvements": [
+            "Har bir javobni 3–4 ta to'liq gap bilan kengaytiring.",
+            "Bir xil so'zlarni takrorlamaslikka harakat qiling.",
+        ],
+        "corrections": [],
+    }
+
+
 class MockProvider:
     """Development va testlar uchun: tashqi API'ga murojaat qilmaydi."""
 
@@ -97,8 +153,18 @@ class MockProvider:
         last = messages[-1]["content"] if messages else ""
         if json_schema:
             props = json_schema.get("properties", {})
-            data = _mock_questions(_ctx(messages)) if "questions" in props else _mock_plan(_ctx(messages))
+            if "questions" in props:
+                data = _mock_questions(_ctx(messages))
+            elif "level" in props:
+                data = _mock_assessment(_ctx(messages))
+            else:
+                data = _mock_plan(_ctx(messages))
             text = json.dumps(data, ensure_ascii=False)
+        elif speaking := re.search(r"SPEAKING-EXAMINER lang=(\w+)", system):
+            questions = _SPEAKING_QUESTIONS[speaking.group(1)]
+            # "(Start the interview.)" xizmat xabari javob hisoblanmaydi
+            answered = sum(x["role"] == "user" and not x["content"].startswith("(Start") for x in messages)
+            text = questions[(answered - 1) % len(questions)]
         elif m := re.search(r"^Ekspert yechimi: (.*?)(?=\n\n<untrusted |\Z)", last, re.S | re.M):
             # Izoh so'rovi: ichki prompt (teglar, variant ID'lari) o'quvchiga qaytarilmasin
             text = _mock_explanation(m.group(1).strip())

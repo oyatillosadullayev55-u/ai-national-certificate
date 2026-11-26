@@ -5,6 +5,7 @@ import '../core/session.dart';
 import '../core/theme.dart';
 import '../widgets/common.dart';
 import '../widgets/math_text.dart';
+import 'speaking_screen.dart';
 import 'study_plan_screen.dart';
 
 class AiTutorScreen extends StatefulWidget {
@@ -66,6 +67,15 @@ class _AiTutorScreenState extends State<AiTutorScreen> {
                 style: TextStyle(color: Colors.white, height: 1.4),
               ),
             ]),
+          ),
+          Card(
+            child: ListTile(
+              leading: const IconBadge(Icons.mic, color: Color(0xFFDB2777)),
+              title: const Text('Ovozli suhbat', style: TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: const Text('AI bilan gaplashing va til darajangizni aniqlang'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SpeakingScreen())),
+            ),
           ),
           Card(
             child: ListTile(

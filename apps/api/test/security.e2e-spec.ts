@@ -136,6 +136,18 @@ describe('Security (e2e)', () => {
     await http.get(`${api}/students/${A.id}/knowledge-map`).query({ subjectId: mathId }).set(auth(B.token)).expect(200);
   });
 
+  it('ovozli suhbat: boshqa foydalanuvchi ko\'ra olmaydi, javobsiz baholanmaydi', async () => {
+    const s = (await http.post(`${api}/ai/speaking/sessions`).set(auth(A.token)).send({ language: 'en' }).expect(201)).body;
+    expect(s.answersNeeded).toBe(3);
+    await http.get(`${api}/ai/speaking/sessions/${s.id}`).set(auth(B.token)).expect(403);
+    await http.post(`${api}/ai/speaking/sessions/${s.id}/messages`).set(auth(B.token)).send({ content: 'hi' }).expect(403);
+    await http.post(`${api}/ai/speaking/sessions/${s.id}/assess`).set(auth(B.token)).expect(403);
+    await http.post(`${api}/ai/speaking/sessions/${s.id}/assess`).set(auth(A.token)).expect(400);
+    await http.post(`${api}/ai/speaking/sessions`).set(auth(A.token)).send({ language: 'de' }).expect(400);
+    const mine = await http.get(`${api}/ai/speaking/sessions`).set(auth(B.token)).expect(200);
+    expect(mine.body).toHaveLength(0);
+  });
+
   it('muallif o\'z savolini tasdiqlay olmaydi', async () => {
     const topics = (await http.get(`${api}/subjects/${mathId}/topics`).expect(200)).body;
     const q = await http
