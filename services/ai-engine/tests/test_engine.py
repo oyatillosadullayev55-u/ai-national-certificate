@@ -96,7 +96,10 @@ def test_explain(client):
             "studentResponse": {"optionId": "a"},
         },
     )
-    assert r.status_code == 200 and r.json()["content"]
+    assert r.status_code == 200
+    content = r.json()["content"]
+    # Mock izoh ekspert yechimiga tayanadi va ichki promptni oshkor qilmaydi
+    assert "x=4" in content and "<untrusted" not in content and '"id"' not in content
 
 
 def test_sanitize_strips_invisible_chars():

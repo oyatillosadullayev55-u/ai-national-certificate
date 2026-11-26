@@ -77,7 +77,8 @@ class ApiClient {
     try {
       final req = http.Request(method, uri)..headers.addAll(headers);
       if (body != null) req.body = jsonEncode(body);
-      res = await http.Response.fromStream(await _http.send(req)).timeout(timeout ?? const Duration(seconds: 25));
+      // Timeout ulanishni ham qamraydi — javob bermayotgan server ilovani osiltirib qo'ymaydi
+      res = await _http.send(req).then(http.Response.fromStream).timeout(timeout ?? const Duration(seconds: 25));
     } on TimeoutException {
       throw ApiException(0, 'Server javob bermadi. Internetni tekshiring.', offline: true);
     } on SocketException {
@@ -90,8 +91,17 @@ class ApiClient {
       if (await _doRefresh()) return request(method, path, body: body, query: query, retry: false, timeout: timeout);
     }
 
-    final dynamic data = res.bodyBytes.isEmpty ? null : jsonDecode(utf8.decode(res.bodyBytes));
-    if (res.statusCode >= 400) throw ApiException(res.statusCode, _errorMessage(data, res.statusCode));
+    dynamic data;
+    try {
+      data = res.bodyBytes.isEmpty ? null : jsonDecode(utf8.decode(res.bodyBytes));
+    } on FormatException {
+      // Proxy/gateway JSON bo'lmagan sahifa qaytarishi mumkin (502, 504)
+      if (res.statusCode < 400) throw ApiException(res.statusCode, 'Serverdan noto\'g\'ri javob keldi');
+    }
+    // 5xx — vaqtinchalik: offline kabi qaraladi, javoblar navbatda qoladi
+    if (res.statusCode >= 400) {
+      throw ApiException(res.statusCode, _errorMessage(data, res.statusCode), offline: res.statusCode >= 500);
+    }
     return data;
   }
 

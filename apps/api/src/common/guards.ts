@@ -2,6 +2,7 @@ import { CanActivate, ExecutionContext, ForbiddenException, Injectable, Unauthor
 import { Reflector } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
+import { ThrottlerGuard } from '@nestjs/throttler';
 import { AccessService } from './access/access.service';
 import { IS_PUBLIC, PERMISSIONS, PermissionMeta } from './decorators';
 
@@ -30,6 +31,18 @@ export class JwtAuthGuard implements CanActivate {
     } catch {
       throw new UnauthorizedException('Token yaroqsiz yoki muddati tugagan');
     }
+  }
+}
+
+/**
+ * So'rovlar limiti: kirgan foydalanuvchi uchun — user bo'yicha, ochiq endpointlarda — IP bo'yicha.
+ * Aks holda o'quv markazida bitta IP ortidagi butun sinf umumiy limitni bo'lishib qoladi.
+ * JwtAuthGuard'dan keyin ishlashi shart (req.user shu yerda paydo bo'ladi).
+ */
+@Injectable()
+export class UserThrottlerGuard extends ThrottlerGuard {
+  protected async getTracker(req: Record<string, any>): Promise<string> {
+    return req.user?.id ? `user:${req.user.id}` : req.ip;
   }
 }
 

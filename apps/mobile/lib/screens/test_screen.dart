@@ -69,7 +69,7 @@ class _TestScreenState extends State<TestScreen> {
     if (_deadline != null) {
       final left = _deadline!.difference(DateTime.now().add(_serverOffset));
       _remaining = left.isNegative ? Duration.zero : left;
-      _ticker = Timer.periodic(const Duration(seconds: 1), (_) => _tick());
+      _startTicker();
     }
   }
 
@@ -77,19 +77,27 @@ class _TestScreenState extends State<TestScreen> {
     if (!mounted) return;
     if (_queue.closed && !_submitting) {
       // server urinishni yopgan (vaqt tugagan) — natijaga o'tamiz
-      _openResult().catchError((Object e) {
-        if (mounted) showError(context, e);
-      });
+      _finish();
       return;
     }
     setState(() {});
   }
 
+  /// Avtomatik yakunlash muvaffaqiyatsiz bo'lsa (offline), keyingi urinish vaqti
+  DateTime? _autoRetryAt;
+
   void _tick() {
     final now = DateTime.now().add(_serverOffset);
     final left = _deadline!.difference(now);
     setState(() => _remaining = left.isNegative ? Duration.zero : left);
-    if (left <= Duration.zero && !_submitting) _submit(auto: true);
+    if (left <= Duration.zero && !_submitting && (_autoRetryAt?.isBefore(DateTime.now()) ?? true)) {
+      _submit(auto: true);
+    }
+  }
+
+  void _startTicker() {
+    _ticker?.cancel();
+    if (_deadline != null) _ticker = Timer.periodic(const Duration(seconds: 1), (_) => _tick());
   }
 
   @override
@@ -111,8 +119,13 @@ class _TestScreenState extends State<TestScreen> {
 
   void _goTo(int i) {
     if (i < 0 || i >= _questions.length) return;
-    _accumulateTime();
     _pages.jumpToPage(i);
+  }
+
+  /// Tugma yoki surish (swipe) — ikkalasida ham oldingi savolga sarflangan vaqt yoziladi
+  void _onPageChanged(int i) {
+    _accumulateTime();
+    setState(() => _index = i);
   }
 
   void _answer(Map<String, dynamic> response) {
@@ -155,8 +168,14 @@ class _TestScreenState extends State<TestScreen> {
           ],
         ),
       );
-      if (ok != true) return;
+      // Dialog ochiq turganda vaqt tugab, avtomatik yakunlash boshlangan bo'lishi mumkin
+      if (ok != true || !mounted || _submitting) return;
     }
+    await _finish();
+  }
+
+  Future<void> _finish() async {
+    if (_submitting) return;
     setState(() => _submitting = true);
     _ticker?.cancel();
     try {
@@ -164,21 +183,20 @@ class _TestScreenState extends State<TestScreen> {
       if (left > 0 && !_queue.closed) {
         throw ApiException(0, '$left ta javob hali yuborilmadi. Internet tiklanganda qayta urinib ko\'ring.', offline: true);
       }
-      await _openResult();
+      // submit idempotent: server allaqachon yopgan bo'lsa ham natijani qaytaradi
+      final result = await api.post('/attempts/$_attemptId/submit');
+      if (!mounted) return;
+      // Ustida ochiq dialog/panel qolgan bo'lsa yopamiz — natija aynan test ekranini almashtiradi
+      final route = ModalRoute.of(context);
+      Navigator.of(context).popUntil((r) => r == route);
+      Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => ResultScreen(result: Map<String, dynamic>.from(result as Map))));
     } catch (e) {
       if (!mounted) return;
       setState(() => _submitting = false);
-      if (_deadline != null) _ticker = Timer.periodic(const Duration(seconds: 1), (_) => _tick());
+      _autoRetryAt = DateTime.now().add(const Duration(seconds: 10));
+      _startTicker();
       showError(context, e);
     }
-  }
-
-  Future<void> _openResult() async {
-    _submitting = true;
-    // submit idempotent: server allaqachon yopgan bo'lsa ham natijani qaytaradi
-    final result = await api.post('/attempts/$_attemptId/submit');
-    if (!mounted) return;
-    Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => ResultScreen(result: Map<String, dynamic>.from(result as Map))));
   }
 
   Future<bool> _confirmLeave() async {
@@ -269,10 +287,7 @@ class _TestScreenState extends State<TestScreen> {
             child: PageView.builder(
               controller: _pages,
               itemCount: _questions.length,
-              onPageChanged: (i) => setState(() {
-                _index = i;
-                _shownAt = DateTime.now();
-              }),
+              onPageChanged: _onPageChanged,
               itemBuilder: (context, i) {
                 final q = _questions[i];
                 final payload = q['payload'] as Map?;

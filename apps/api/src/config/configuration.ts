@@ -24,7 +24,7 @@ export default () => ({
     engineUrl: process.env.AI_ENGINE_URL ?? 'http://localhost:8000',
     internalKey: required('AI_INTERNAL_KEY'),
     dailyMessageLimitFree: parseInt(process.env.AI_DAILY_LIMIT_FREE ?? '20', 10),
-    timeoutMs: parseInt(process.env.AI_TIMEOUT_MS ?? '30000', 10),
+    timeoutMs: parseInt(process.env.AI_TIMEOUT_MS ?? '60000', 10),
   },
 });
 

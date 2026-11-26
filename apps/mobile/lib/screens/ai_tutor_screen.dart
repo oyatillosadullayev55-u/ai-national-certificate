@@ -165,7 +165,11 @@ class _ChatScreenState extends State<ChatScreen> {
     });
     _toBottom();
     try {
-      final reply = await api.post('/ai/tutor/conversations/${widget.conversationId}/messages', {'content': text});
+      final reply = await api.post(
+        '/ai/tutor/conversations/${widget.conversationId}/messages',
+        {'content': text},
+        const Duration(seconds: 75), // haqiqiy model javobi oddiy so'rovdan uzoqroq
+      );
       if (!mounted) return;
       setState(() => _messages.add(Map<String, dynamic>.from(reply as Map)));
     } catch (e) {

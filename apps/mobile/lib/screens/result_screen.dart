@@ -80,7 +80,11 @@ class _QuestionReview extends StatelessWidget {
 
   Future<void> _explain(BuildContext context) async {
     try {
-      final r = await api.post('/ai/explanations', {'attemptId': attemptId, 'questionVersionId': q['questionVersionId']}) as Map;
+      final r = await api.post(
+        '/ai/explanations',
+        {'attemptId': attemptId, 'questionVersionId': q['questionVersionId']},
+        const Duration(seconds: 75),
+      ) as Map;
       if (!context.mounted) return;
       showModalBottomSheet(
         context: context,

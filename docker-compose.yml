@@ -33,6 +33,7 @@ services:
     restart: unless-stopped
     env_file: .env
     environment:
+      NODE_ENV: production # .env dagi development qiymati konteynerga o'tmasin
       DATABASE_URL: postgresql://${POSTGRES_USER:-anc}:${POSTGRES_PASSWORD:-change-me}@postgres:5432/${POSTGRES_DB:-anc}?schema=public
       AI_ENGINE_URL: http://ai-engine:8000
     ports: ["3000:3000"]

@@ -106,7 +106,15 @@ pip install -r requirements.txt
 uvicorn app.main:app --reload --port 8000
 ```
 
-Hammasini Docker'da: `docker compose up --build` (avval `apps/api/prisma/migrations` mavjud bo'lishi kerak).
+Hammasini Docker'da (production rejimi):
+
+```bash
+docker compose up -d --build
+# Birinchi marta: rollar, fanlar, admin va tariflar (.env da kuchli SEED_ADMIN_PASSWORD bo'lishi shart)
+docker compose exec api npm run seed
+```
+
+Production seed namuna savollarni qo'shmaydi. Real o'quvchilar ro'yxatdan o'tishi uchun avval SMS provayder ulanishi kerak — hozircha kod faqat API logiga yoziladi.
 Monitoring bilan: `docker compose --profile monitoring up -d` → Prometheus :9090, Grafana :3001.
 
 **Admin panel:** `cd apps/admin && npm install && npm run dev` → http://localhost:5173

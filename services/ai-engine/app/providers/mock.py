@@ -69,6 +69,16 @@ def _mock_plan(ctx: dict) -> dict:
     }
 
 
+def _mock_explanation(solution: str) -> str:
+    return (
+        "[Namuna izoh — AI kaliti ulanmagan]\n\n"
+        f"Ekspert yechimi: {solution}\n\n"
+        "1. Savolda nima berilgani va nima so'ralganini aniqlang.\n"
+        "2. Yechim qadamlarini o'z javobingiz bilan solishtiring.\n"
+        "3. Xuddi shu usulni o'xshash masalada qo'llab ko'ring."
+    )
+
+
 class MockProvider:
     """Development va testlar uchun: tashqi API'ga murojaat qilmaydi."""
 
@@ -89,6 +99,9 @@ class MockProvider:
             props = json_schema.get("properties", {})
             data = _mock_questions(_ctx(messages)) if "questions" in props else _mock_plan(_ctx(messages))
             text = json.dumps(data, ensure_ascii=False)
+        elif m := re.search(r"^Ekspert yechimi: (.*?)(?=\n\n<untrusted |\Z)", last, re.S | re.M):
+            # Izoh so'rovi: ichki prompt (teglar, variant ID'lari) o'quvchiga qaytarilmasin
+            text = _mock_explanation(m.group(1).strip())
         else:
             text = (
                 "Keling, bosqichma-bosqich ko'rib chiqamiz.\n\n"
