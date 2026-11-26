@@ -4,6 +4,8 @@
 
 O'zbekistondagi milliy sertifikat imtihoniga tayyorlanish platformasi: testlar, xatolar daftari, bilim xaritasi va Claude asosidagi AI yordamchi.
 
+Joriy holat, bajarilgan ishlar va qolgan vazifalar: [docs/MVP_HOLATI.md](docs/MVP_HOLATI.md).
+
 PRD v1.0 asosida: **Modular Monolith (NestJS) + mustaqil AI Engine (FastAPI) + React admin + Flutter student ilova**.
 
 ## Tezkor start (Windows, bitta buyruq)
