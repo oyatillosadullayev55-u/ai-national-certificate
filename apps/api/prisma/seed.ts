@@ -2,6 +2,7 @@
 import { PrismaClient } from '@prisma/client';
 import * as argon2 from 'argon2';
 import { ALL_PERMISSIONS, ROLE_DEFINITIONS } from '../src/common/permissions';
+import { seedDemoContent } from './demo-content';
 
 const prisma = new PrismaClient();
 
@@ -126,6 +127,9 @@ async function main() {
     await prisma.subscriptionPlan.upsert({ where: { code }, create: { code, name, priceMinor, limits }, update: {} });
   }
   console.log('✓ tariflar');
+
+  // 6. Namuna savollar va mock imtihonlar (barcha fanlar) — faqat development
+  if (!production) await seedDemoContent(prisma, admin.id);
 }
 
 main()

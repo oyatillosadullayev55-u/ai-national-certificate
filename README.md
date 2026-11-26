@@ -14,7 +14,7 @@ Kerak: **Node.js 20+**. Ixtiyoriy: **Python 3.10+** (AI Engine), **Flutter** (mo
 powershell -ExecutionPolicy Bypass -File .\start-dev.ps1
 ```
 
-Skript o'rnatishsiz PostgreSQL'ni (port 5433) ishga tushiradi, `.env` fayllarni sirlar bilan yaratadi, migratsiya va seed'ni bajaradi, so'ng barcha xizmatlarni alohida oynalarda ochadi:
+Skript o'rnatishsiz PostgreSQL'ni (port 5433) ishga tushiradi, `.env` fayllarni sirlar bilan yaratadi, migratsiya va seed'ni bajaradi, so'ng barcha xizmatlarni alohida oynalarda ochadi. Development seed har bir fanga 10 ta namuna savol va mock imtihon qo'shadi (`apps/api/prisma/demo-content.ts`; ekspert tekshiruvidan o'tmagan, production'ga qo'shilmaydi):
 
 | Xizmat | Manzil |
 |---|---|
@@ -43,6 +43,26 @@ LLM_MODEL=claude-sonnet-5-5
 ```
 
 Xavfsizlik: prompt injection filtri, `<untrusted>` bilan o'ralgan foydalanuvchi matni, tizim promptining sizib chiqishini tekshirish, server tomonidagi refusal fallback, nazoratli imtihon paytida AI o'chadi, o'quvchilar uchun kunlik limit.
+
+## SMS (OTP kod)
+
+Provayder `SMS_PROVIDER` bilan tanlanadi (Docker'da — ildizdagi `.env`, lokal ishga tushirishda — `apps/api/.env`):
+
+| O'zgaruvchi | Standart | Izoh |
+|---|---|---|
+| `SMS_PROVIDER` | `console` | `console` — SMS yubormaydi, kod API logiga chiqadi (faqat development). `eskiz` — [Eskiz.uz](https://eskiz.uz/sms) |
+| `ESKIZ_EMAIL` | — | Eskiz kabinetidagi email (`eskiz` uchun majburiy) |
+| `ESKIZ_PASSWORD` | — | API paroli (`eskiz` uchun majburiy); repoga yozmang |
+| `ESKIZ_FROM` | `4546` | Jo'natuvchi: `4546` yoki tasdiqlangan nikingiz |
+| `ESKIZ_TIMEOUT_MS` | `10000` | Har bir HTTP so'rov uchun |
+
+`NODE_ENV=production` da API `SMS_PROVIDER=eskiz` va ikkala kirish ma'lumotisiz ishga tushmaydi. Adapter tokenni o'zi oladi va 30 kunlik muddati tugashidan oldin yangilaydi; yuborib bo'lmasa, mijozga `503` qaytadi, sababi logga yoziladi (kod va to'liq raqamsiz).
+
+Ishga tushirishdan oldin Eskiz tomonida:
+
+1. Hisobni test holatidan chiqaring — test holatida faqat Eskiz'ning namunaviy matnlari yuboriladi, OTP kod yetib bormaydi ([API hujjati](https://documenter.getpostman.com/view/663428/RzfmES4z)).
+2. `AI National Certificate tasdiqlash kodi: 123456` matnini kabinetda shablon sifatida moderatsiyadan o'tkazing. Matn `apps/api/src/auth/auth.service.ts` da — o'zgartirsangiz, shablonni ham yangilang.
+3. Balansni to'ldiring va o'z raqamingizga bitta haqiqiy ro'yxatdan o'tish bilan tekshiring.
 
 ## MVP qabul mezonlari (PRD 13)
 
@@ -114,7 +134,7 @@ docker compose up -d --build
 docker compose exec api npm run seed
 ```
 
-Production seed namuna savollarni qo'shmaydi. Real o'quvchilar ro'yxatdan o'tishi uchun avval SMS provayder ulanishi kerak — hozircha kod faqat API logiga yoziladi.
+Production seed namuna savollarni qo'shmaydi. Production rejimida `.env` da `SMS_PROVIDER=eskiz`, `ESKIZ_EMAIL` va `ESKIZ_PASSWORD` bo'lishi shart, aks holda API ishga tushmaydi (yuqoridagi "SMS" bo'limi).
 Monitoring bilan: `docker compose --profile monitoring up -d` → Prometheus :9090, Grafana :3001.
 
 **Admin panel:** `cd apps/admin && npm install && npm run dev` → http://localhost:5173
@@ -123,13 +143,13 @@ Foydalanuvchilar sahifasida kamida bitta odamga `subject_expert` roli bering.
 
 **Mobil ilova:** `apps/mobile/README.md`.
 
-Development'da SMS yuborilmaydi — OTP kod API logida chiqadi (`ConsoleSmsProvider`).
+Development'da (`SMS_PROVIDER=console`, standart) SMS yuborilmaydi — OTP kod API logida chiqadi.
 `LLM_PROVIDER=mock` bo'lsa AI Engine tashqi API'ga murojaat qilmaydi.
 
 ## Testlar
 
 ```bash
-cd apps/api && npm test          # baholash, SM-2, DI/route yig'ilishi
+cd apps/api && npm test          # baholash, SM-2, DI/route yig'ilishi, Eskiz adapteri (HTTP mock)
 cd apps/api && OTP_DEV_ECHO=true npm run test:e2e   # xavfsizlik e2e (haqiqiy PostgreSQL + seed kerak)
 cd apps/mobile && flutter test
 cd services/ai-engine && pytest  # injection himoyasi, prompt sizishi, fallback
@@ -167,7 +187,7 @@ cd services/ai-engine && pytest  # injection himoyasi, prompt sizishi, fallback
 ## MVP'dan keyin (PRD 5–8-bosqichlar)
 
 - Click/Payme webhooklari va obuna limitlarini qo'llash (sxema tayyor: `payments.provider+providerTransactionId` unique)
-- Haqiqiy SMS provayder (Eskiz.uz / Playmobile) adapteri — `SmsProvider` interfeysi tayyor
+- Zaxira SMS provayder (Playmobile) adapteri — `SmsProvider` interfeysi tayyor, Eskiz.uz ulangan
 - Media yuklash (S3 signed URL) — rasmli savollar uchun
 - BullMQ worker: bildirishnomalar, embedding, imtihon sweeper
 - RAG, adaptiv test, Rasch/IRT (AI o'qish rejasi MVP'da tayyor)

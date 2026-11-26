@@ -87,8 +87,11 @@ class ApiClient {
       throw ApiException(0, 'Internet aloqasi yo\'q', offline: true);
     }
 
-    if (res.statusCode == 401 && retry && _refresh != null && !path.startsWith('/auth/')) {
+    // /auth/me va /auth/logout ham himoyalangan — faqat kirish va yangilashning o'zi chiqarib tashlanadi
+    if (res.statusCode == 401 && retry && _refresh != null && path != '/auth/login' && path != '/auth/refresh') {
       if (await _doRefresh()) return request(method, path, body: body, query: query, retry: false, timeout: timeout);
+      // Tokenlar o'chirilmagan bo'lsa, xato vaqtinchalik — sessiya saqlanadi
+      if (_refresh != null) throw ApiException(0, 'Server bilan aloqa yo\'q. Birozdan keyin urinib ko\'ring.', offline: true);
     }
 
     dynamic data;
@@ -112,7 +115,8 @@ class ApiClient {
         await saveTokens(Map<String, dynamic>.from(data as Map));
         return true;
       } on ApiException catch (e) {
-        if (!e.offline) {
+        // Faqat server tokenni rad etsa chiqaramiz; tarmoq, 5xx va 429 — vaqtinchalik
+        if (!e.offline && e.status != 429) {
           await clearTokens();
           onSessionExpired?.call();
         }
