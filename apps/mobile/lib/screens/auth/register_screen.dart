@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/api_client.dart';
 import '../../core/session.dart';
 import '../../widgets/common.dart';
+import '../../widgets/otp_countdown.dart';
 
 /// 3 bosqich: telefon → SMS kod → ism va parol. `reset: true` — parolni tiklash.
 class RegisterScreen extends StatefulWidget {
@@ -21,6 +22,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _name = TextEditingController();
   final _password = TextEditingController();
   String? _verificationToken;
+  DateTime _codeExpiresAt = DateTime.now();
 
   String get _purpose => widget.reset ? 'RESET_PASSWORD' : 'REGISTER';
 
@@ -39,7 +41,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (!mounted) return;
     // Faqat development serverda qaytadi (OTP_DEV_ECHO)
     if (r['devCode'] != null) showInfo(context, 'Dev kod: ${r['devCode']}');
-    setState(() => _step = 1);
+    _code.clear(); // qayta yuborilganda eski kod qolib ketmasin
+    setState(() {
+      _codeExpiresAt = DateTime.now().add(Duration(seconds: asNum(r['expiresInSec']).toInt()));
+      _step = 1;
+    });
   }
 
   Future<void> _verify() async {
@@ -96,6 +102,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             decoration: const InputDecoration(labelText: 'Kod', border: OutlineInputBorder()),
           ),
           BusyButton(onPressed: _verify, child: const Text('Tasdiqlash')),
+          OtpCountdown(expiresAt: _codeExpiresAt, onResend: _sendOtp),
           TextButton(onPressed: () => setState(() => _step = 0), child: const Text('Raqamni o\'zgartirish')),
         ],
         if (_step == 2) ...[
