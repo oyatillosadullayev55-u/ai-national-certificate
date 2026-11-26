@@ -77,7 +77,8 @@ class ApiClient {
     try {
       final req = http.Request(method, uri)..headers.addAll(headers);
       if (body != null) req.body = jsonEncode(body);
-      res = await http.Response.fromStream(await _http.send(req)).timeout(timeout ?? const Duration(seconds: 25));
+      // Timeout ulanishni ham qamraydi — javob bermayotgan server ilovani osiltirib qo'ymaydi
+      res = await _http.send(req).then(http.Response.fromStream).timeout(timeout ?? const Duration(seconds: 25));
     } on TimeoutException {
       throw ApiException(0, 'Server javob bermadi. Internetni tekshiring.', offline: true);
     } on SocketException {
@@ -86,12 +87,24 @@ class ApiClient {
       throw ApiException(0, 'Internet aloqasi yo\'q', offline: true);
     }
 
-    if (res.statusCode == 401 && retry && _refresh != null && !path.startsWith('/auth/')) {
+    // /auth/me va /auth/logout ham himoyalangan — faqat kirish va yangilashning o'zi chiqarib tashlanadi
+    if (res.statusCode == 401 && retry && _refresh != null && path != '/auth/login' && path != '/auth/refresh') {
       if (await _doRefresh()) return request(method, path, body: body, query: query, retry: false, timeout: timeout);
+      // Tokenlar o'chirilmagan bo'lsa, xato vaqtinchalik — sessiya saqlanadi
+      if (_refresh != null) throw ApiException(0, 'Server bilan aloqa yo\'q. Birozdan keyin urinib ko\'ring.', offline: true);
     }
 
-    final dynamic data = res.bodyBytes.isEmpty ? null : jsonDecode(utf8.decode(res.bodyBytes));
-    if (res.statusCode >= 400) throw ApiException(res.statusCode, _errorMessage(data, res.statusCode));
+    dynamic data;
+    try {
+      data = res.bodyBytes.isEmpty ? null : jsonDecode(utf8.decode(res.bodyBytes));
+    } on FormatException {
+      // Proxy/gateway JSON bo'lmagan sahifa qaytarishi mumkin (502, 504)
+      if (res.statusCode < 400) throw ApiException(res.statusCode, 'Serverdan noto\'g\'ri javob keldi');
+    }
+    // 5xx — vaqtinchalik: offline kabi qaraladi, javoblar navbatda qoladi
+    if (res.statusCode >= 400) {
+      throw ApiException(res.statusCode, _errorMessage(data, res.statusCode), offline: res.statusCode >= 500);
+    }
     return data;
   }
 
@@ -102,7 +115,8 @@ class ApiClient {
         await saveTokens(Map<String, dynamic>.from(data as Map));
         return true;
       } on ApiException catch (e) {
-        if (!e.offline) {
+        // Faqat server tokenni rad etsa chiqaramiz; tarmoq, 5xx va 429 — vaqtinchalik
+        if (!e.offline && e.status != 429) {
           await clearTokens();
           onSessionExpired?.call();
         }

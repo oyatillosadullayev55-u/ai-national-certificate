@@ -171,6 +171,13 @@ class _TextAnswerState extends State<_TextAnswer> {
   late final TextEditingController _c = TextEditingController(text: widget.initial);
 
   @override
+  void didUpdateWidget(_TextAnswer old) {
+    super.didUpdateWidget(old);
+    // Offline navbatdan tiklangan javob maydonga keyinroq keladi
+    if (old.initial != widget.initial && _c.text != widget.initial) _c.text = widget.initial;
+  }
+
+  @override
   void dispose() {
     _c.dispose();
     super.dispose();
@@ -252,15 +259,23 @@ class _OrderingState extends State<_Ordering> {
   @override
   void initState() {
     super.initState();
+    _items = _ordered();
+  }
+
+  @override
+  void didUpdateWidget(_Ordering old) {
+    super.didUpdateWidget(old);
+    if (old.response != widget.response) _items = _ordered();
+  }
+
+  /// Saqlangan tartib bo'lsa shu bo'yicha, aks holda serverdan kelgan tartib
+  List<Map<String, dynamic>> _ordered() {
     final items = ((widget.payload['items'] as List?) ?? []).map((e) => Map<String, dynamic>.from(e as Map)).toList();
     final saved = (widget.response?['order'] as List?)?.cast<String>();
-    if (saved != null && saved.length == items.length) {
-      final byId = {for (final i in items) i['id'] as String: i};
-      _items = [for (final id in saved) if (byId[id] != null) byId[id]!];
-      if (_items.length != items.length) _items = items;
-    } else {
-      _items = items;
-    }
+    if (saved == null || saved.length != items.length) return items;
+    final byId = {for (final i in items) i['id'] as String: i};
+    final result = [for (final id in saved) if (byId[id] != null) byId[id]!];
+    return result.length == items.length ? result : items;
   }
 
   @override
@@ -272,9 +287,8 @@ class _OrderingState extends State<_Ordering> {
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
         buildDefaultDragHandles: widget.enabled,
-        onReorder: (oldIndex, newIndex) {
+        onReorderItem: (oldIndex, newIndex) {
           setState(() {
-            if (newIndex > oldIndex) newIndex -= 1;
             final item = _items.removeAt(oldIndex);
             _items.insert(newIndex, item);
           });

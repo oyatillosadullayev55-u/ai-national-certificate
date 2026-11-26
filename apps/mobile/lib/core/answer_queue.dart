@@ -24,7 +24,8 @@ class AnswerQueue extends ChangeNotifier {
   final bool persist;
   final Map<String, Map<String, dynamic>> _pending = {};
   Timer? _retry;
-  bool _flushing = false;
+  Future<void> _tail = Future.value();
+  bool _disposed = false;
 
   /// Yakunlangan / vaqti tugagan urinish — boshqa yuborilmaydi
   bool closed = false;
@@ -38,9 +39,10 @@ class AnswerQueue extends ChangeNotifier {
     if (!persist) return;
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getString(_key);
-    if (raw == null) return;
+    if (raw == null || _disposed) return;
     final decoded = jsonDecode(raw) as Map<String, dynamic>;
-    decoded.forEach((k, v) => _pending[k] = Map<String, dynamic>.from(v as Map));
+    // Tiklash paytida berilgan yangi javob saqlangan eskisidan ustun
+    decoded.forEach((k, v) => _pending.putIfAbsent(k, () => Map<String, dynamic>.from(v as Map)));
     notifyListeners();
     unawaited(flush());
   }
@@ -62,9 +64,15 @@ class AnswerQueue extends ChangeNotifier {
   }
 
   /// Hammasini yuboradi. Qaytaradi: yuborilmay qolganlar soni.
-  Future<int> flush() async {
-    if (_flushing || closed) return _pending.length;
-    _flushing = true;
+  /// Parallel chaqiruvlar navbatga turadi — natija haqiqiy yuborishdan keyingi holat.
+  Future<int> flush() {
+    final run = _tail.then((_) => _drain());
+    _tail = run.catchError((Object _) {}); // bitta xato keyingi yuborishlarni to'xtatmaydi
+    return run.then((_) => _pending.length);
+  }
+
+  Future<void> _drain() async {
+    if (closed || _disposed) return;
     try {
       for (final qvId in _pending.keys.toList()) {
         final body = _pending[qvId]!;
@@ -73,7 +81,8 @@ class AnswerQueue extends ChangeNotifier {
           // Yuborish paytida yangi javob kelgan bo'lsa — uni o'chirmaymiz
           if (identical(_pending[qvId], body)) _pending.remove(qvId);
         } on ApiException catch (e) {
-          if (e.offline) break; // tarmoq yo'q — keyinroq
+          // Vaqtinchalik xato (tarmoq, 5xx, sessiya, so'rovlar limiti) — javob saqlanadi, keyinroq
+          if (e.offline || e.status == 401 || e.status == 408 || e.status == 429) break;
           if (e.status == 409) {
             closed = true; // urinish yakunlangan
             _pending.clear();
@@ -83,12 +92,12 @@ class AnswerQueue extends ChangeNotifier {
         }
       }
     } finally {
-      _flushing = false;
       _save();
-      notifyListeners();
-      _scheduleRetry();
+      if (!_disposed) {
+        notifyListeners();
+        _scheduleRetry();
+      }
     }
-    return _pending.length;
   }
 
   void _scheduleRetry() {
@@ -108,6 +117,7 @@ class AnswerQueue extends ChangeNotifier {
 
   @override
   void dispose() {
+    _disposed = true;
     _retry?.cancel();
     super.dispose();
   }

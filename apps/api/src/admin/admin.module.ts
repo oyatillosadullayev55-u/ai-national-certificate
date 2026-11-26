@@ -41,7 +41,8 @@ export class AdminService {
       this.prisma.user.count({ where: { createdAt: { gte: weekAgo } } }),
       this.prisma.studentProfile.count(),
       this.prisma.question.groupBy({ by: ['status'], where: { deletedAt: null }, _count: { _all: true } }),
-      this.prisma.questionVersion.count({ where: { status: 'IN_REVIEW' } }),
+      // Tekshiruv navbati bilan bir xil shart: o'chirilgan savollar sanalmaydi
+      this.prisma.questionVersion.count({ where: { status: 'IN_REVIEW', question: { deletedAt: null } } }),
       this.prisma.examAttempt.count({ where: { createdAt: { gte: weekAgo } } }),
       this.prisma.aiUsage.aggregate({ where: { createdAt: { gte: today } }, _count: { _all: true }, _sum: { tokensIn: true, tokensOut: true } }),
       this.prisma.subject.findMany({

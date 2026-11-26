@@ -16,6 +16,7 @@ export default () => ({
     // Faqat development/test: OTP kodni javobda qaytaradi (production'da hech qachon ishlamaydi)
     devEcho: process.env.NODE_ENV !== 'production' && process.env.OTP_DEV_ECHO === 'true',
   },
+  sms: smsConfig(),
   exam: {
     // Internet uzilishi uchun deadline'dan keyin qabul qilinadigan qo'shimcha vaqt
     graceSec: parseInt(process.env.EXAM_GRACE_SEC ?? '30', 10),
@@ -24,9 +25,34 @@ export default () => ({
     engineUrl: process.env.AI_ENGINE_URL ?? 'http://localhost:8000',
     internalKey: required('AI_INTERNAL_KEY'),
     dailyMessageLimitFree: parseInt(process.env.AI_DAILY_LIMIT_FREE ?? '20', 10),
-    timeoutMs: parseInt(process.env.AI_TIMEOUT_MS ?? '30000', 10),
+    timeoutMs: parseInt(process.env.AI_TIMEOUT_MS ?? '60000', 10),
   },
 });
+
+/** Noto'g'ri SMS sozlamasi bilan API ishga tushmaydi — aks holda o'quvchilar OTP kodsiz qoladi */
+function smsConfig() {
+  const provider = process.env.SMS_PROVIDER?.trim() || 'console';
+  if (provider !== 'console' && provider !== 'eskiz') {
+    throw new Error(`SMS_PROVIDER must be "console" or "eskiz", got "${provider}"`);
+  }
+  if (provider === 'console' && process.env.NODE_ENV === 'production') {
+    throw new Error('SMS_PROVIDER=eskiz is required in production: the console provider does not send SMS');
+  }
+  const eskiz = {
+    email: process.env.ESKIZ_EMAIL?.trim() ?? '',
+    password: process.env.ESKIZ_PASSWORD ?? '',
+    from: process.env.ESKIZ_FROM?.trim() || '4546',
+    timeoutMs: Number(process.env.ESKIZ_TIMEOUT_MS || '10000'),
+  };
+  if (provider === 'eskiz') {
+    const missing = [!eskiz.email && 'ESKIZ_EMAIL', !eskiz.password.trim() && 'ESKIZ_PASSWORD'].filter(Boolean);
+    if (missing.length) throw new Error(`SMS_PROVIDER=eskiz requires ${missing.join(', ')}`);
+    if (!Number.isInteger(eskiz.timeoutMs) || eskiz.timeoutMs <= 0) {
+      throw new Error('ESKIZ_TIMEOUT_MS must be a positive integer (milliseconds)');
+    }
+  }
+  return { provider, eskiz };
+}
 
 function required(name: string): string {
   const v = process.env[name];

@@ -2,14 +2,14 @@ import { Controller, Get, MiddlewareConsumer, Module, NestModule } from '@nestjs
 import { ConfigModule } from '@nestjs/config';
 import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
-import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { AdminModule } from './admin/admin.module';
 import { AiTutorModule } from './ai-tutor/ai-tutor.module';
 import { AuthModule } from './auth/auth.module';
 import { AccessModule } from './common/access/access.service';
 import { AuditModule } from './common/audit/audit.service';
 import { Public } from './common/decorators';
-import { JwtAuthGuard, PermissionsGuard } from './common/guards';
+import { JwtAuthGuard, PermissionsGuard, UserThrottlerGuard } from './common/guards';
 import { AllExceptionsFilter, requestIdMiddleware } from './common/http';
 import { metricsMiddleware, MetricsModule } from './common/metrics';
 import { PrismaModule, PrismaService } from './common/prisma/prisma.service';
@@ -59,8 +59,8 @@ class HealthController {
   controllers: [HealthController],
   providers: [
     { provide: APP_FILTER, useClass: AllExceptionsFilter },
-    { provide: APP_GUARD, useClass: ThrottlerGuard },
-    { provide: APP_GUARD, useClass: JwtAuthGuard },
+    { provide: APP_GUARD, useClass: JwtAuthGuard }, // tartib muhim: limit user bo'yicha hisoblanadi
+    { provide: APP_GUARD, useClass: UserThrottlerGuard },
     { provide: APP_GUARD, useClass: PermissionsGuard },
   ],
 })

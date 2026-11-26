@@ -2,6 +2,7 @@
 import { PrismaClient } from '@prisma/client';
 import * as argon2 from 'argon2';
 import { ALL_PERMISSIONS, ROLE_DEFINITIONS } from '../src/common/permissions';
+import { seedDemoContent } from './demo-content';
 
 const prisma = new PrismaClient();
 
@@ -18,6 +19,12 @@ const SUBJECTS = [
 ] as const;
 
 async function main() {
+  const production = process.env.NODE_ENV === 'production';
+  const password = process.env.SEED_ADMIN_PASSWORD ?? 'ChangeMe123!';
+  if (production && (password === 'ChangeMe123!' || password.length < 12)) {
+    throw new Error('Production seed: SEED_ADMIN_PASSWORD kamida 12 belgili va namunadagidan farqli bo\'lishi kerak');
+  }
+
   // 1. Ruxsatlar va rollar
   for (const key of ALL_PERMISSIONS) {
     await prisma.permission.upsert({ where: { key }, create: { key }, update: {} });
@@ -38,7 +45,6 @@ async function main() {
 
   // 3. Super admin
   const phone = process.env.SEED_ADMIN_PHONE ?? '+998900000000';
-  const password = process.env.SEED_ADMIN_PASSWORD ?? 'ChangeMe123!';
   const superRole = await prisma.role.findUniqueOrThrow({ where: { key: 'super_admin' } });
   const admin = await prisma.user.upsert({
     where: { phone },
@@ -52,7 +58,8 @@ async function main() {
 
   // 4. Namuna: Matematika mavzulari, bog'liqlik va tasdiqlangan savollar
   const math = await prisma.subject.findUniqueOrThrow({ where: { code: 'math' } });
-  if ((await prisma.topic.count({ where: { subjectId: math.id } })) === 0) {
+  // Namuna kontent faqat development uchun — production'ga ekspert tasdiqlagan savollar import qilinadi
+  if (!production && (await prisma.topic.count({ where: { subjectId: math.id } })) === 0) {
     const algebra = await prisma.topic.create({ data: { subjectId: math.id, name: 'Algebra', sortOrder: 0 } });
     const eq = await prisma.topic.create({ data: { subjectId: math.id, parentId: algebra.id, level: 'SUBTOPIC', name: 'Tenglamalar', sortOrder: 0 } });
     const ineq = await prisma.topic.create({ data: { subjectId: math.id, parentId: algebra.id, level: 'SUBTOPIC', name: 'Tengsizliklar', sortOrder: 1 } });
@@ -120,6 +127,9 @@ async function main() {
     await prisma.subscriptionPlan.upsert({ where: { code }, create: { code, name, priceMinor, limits }, update: {} });
   }
   console.log('✓ tariflar');
+
+  // 6. Namuna savollar va mock imtihonlar (barcha fanlar) — faqat development
+  if (!production) await seedDemoContent(prisma, admin.id);
 }
 
 main()

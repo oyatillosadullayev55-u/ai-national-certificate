@@ -111,7 +111,7 @@ class _Assigned extends StatelessWidget {
               leading: Icon(done ? Icons.task_alt : Icons.pending_actions, color: done ? Colors.green : Colors.orange),
               title: Text(t['title'] as String),
               subtitle: Text(done
-                  ? 'Natija: ${percentText(asNum(last!['score']), asNum(last['maxScore']))}'
+                  ? 'Natija: ${percentText(asNum(last['score']), asNum(last['maxScore']))}'
                   : (due != null ? 'Muddat: ${due.day}.${due.month}.${due.year}' : 'Muddatsiz')),
               onTap: done ? null : () => startTest(context, t).then((_) => reload()),
             );
