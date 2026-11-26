@@ -41,11 +41,11 @@ export class AiGatewayClient {
   }
 }
 
-/** O'quvchining kunlik AI limiti (tutor, izoh, reja — hammasi birga hisoblanadi) */
+/** O'quvchining kunlik AI limiti (tutor, izoh, reja, ovozli suhbat — hammasi birga hisoblanadi) */
 export async function assertDailyAiLimit(prisma: PrismaService, config: ConfigService, userId: string) {
   const since = new Date();
   since.setHours(0, 0, 0, 0);
-  const used = await prisma.aiUsage.count({ where: { userId, createdAt: { gte: since }, feature: { in: ['tutor', 'explanation', 'plan'] } } });
+  const used = await prisma.aiUsage.count({ where: { userId, createdAt: { gte: since }, feature: { in: ['tutor', 'explanation', 'plan', 'speaking'] } } });
   // TODO: tarifga qarab (subscription_plans.limits.aiMessagesPerDay)
   const limit = config.get<number>('ai.dailyMessageLimitFree')!;
   if (used >= limit) throw new HttpException(`Kunlik AI limiti (${limit}) tugadi`, HttpStatus.TOO_MANY_REQUESTS);

@@ -26,6 +26,24 @@ flutter run --dart-define=API_URL=http://10.0.2.2:3000/api/v1   # Android emulya
     ...>
 ```
 
+## Ovozli suhbat (mikrofon)
+
+AI Tutor → "Ovozli suhbat". Nutqni tanish va o'qib berish qurilma/brauzer xizmatlari orqali ishlaydi
+(`speech_to_text`, `flutter_tts`), shuning uchun til qo'llab-quvvatlashi qurilmaga bog'liq. Web'da Chrome yoki Edge
+ishlating; mikrofon faqat HTTPS yoki localhost'da ochiladi. Mikrofon ishlamasa javobni yozish mumkin.
+
+Android — `AndroidManifest.xml` ga:
+
+```xml
+<uses-permission android:name="android.permission.RECORD_AUDIO"/>
+<queries>
+    <intent><action android:name="android.speech.RecognitionService"/></intent>
+    <intent><action android:name="android.intent.action.TTS_SERVICE"/></intent>
+</queries>
+```
+
+iOS — `Info.plist` ga `NSMicrophoneUsageDescription` va `NSSpeechRecognitionUsageDescription`.
+
 Development'da SMS kelmaydi: API'ni `OTP_DEV_ECHO=true` bilan ishga tushirsangiz, kod ilovada xabar sifatida chiqadi.
 Aks holda kod API logida ko'rinadi.
 

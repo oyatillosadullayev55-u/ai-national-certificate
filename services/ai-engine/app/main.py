@@ -4,6 +4,7 @@ import logging
 from fastapi import Depends, FastAPI, Header, HTTPException
 
 from .agents.content import QuestionGeneratorAgent, StudyPlanAgent
+from .agents.speaking import SpeakingAgent
 from .agents.tutor import ExplanationAgent, TutorAgent
 from .config import Settings, get_settings
 from .gateway import AIGateway
@@ -13,6 +14,8 @@ from .schemas import (
     ExplainRequest,
     GenerateQuestionsReply,
     GenerateQuestionsRequest,
+    SpeakingAssessReply,
+    SpeakingRequest,
     StudyPlanReply,
     StudyPlanRequest,
     TutorRequest,
@@ -73,3 +76,21 @@ async def explain(req: ExplainRequest, gw: AIGateway = Depends(get_gateway)) -> 
         return await ExplanationAgent(gw).explain(req)
     except ProviderError as e:
         raise HTTPException(status_code=503, detail="model unavailable") from e
+
+
+@app.post("/v1/speaking/turn", response_model=EngineReply, dependencies=[Depends(require_internal_key)])
+async def speaking_turn(req: SpeakingRequest, gw: AIGateway = Depends(get_gateway)) -> EngineReply:
+    if req.messages[-1].role != "user":
+        raise HTTPException(status_code=422, detail="last message must be from the user")
+    try:
+        return await SpeakingAgent(gw).turn(req)
+    except ProviderError as e:
+        raise HTTPException(status_code=503, detail="model unavailable") from e
+
+
+@app.post("/v1/speaking/assess", response_model=SpeakingAssessReply, dependencies=[Depends(require_internal_key)])
+async def speaking_assess(req: SpeakingRequest, gw: AIGateway = Depends(get_gateway)) -> SpeakingAssessReply:
+    try:
+        return await SpeakingAgent(gw).assess(req)
+    except ProviderError as e:
+        raise HTTPException(status_code=503, detail=str(e)) from e

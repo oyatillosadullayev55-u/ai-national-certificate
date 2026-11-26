@@ -142,3 +142,41 @@ class StudyPlanReply(BaseModel):
     model: str
     flagged: bool = False
     usage: Usage = Field(default_factory=Usage)
+
+
+# ───────────── Ovozli suhbat va til darajasi ─────────────
+
+SpeakingLanguage = Literal["en", "ru", "uz"]
+CefrLevel = Literal["A1", "A2", "B1", "B2", "C1", "C2"]
+
+
+class SpeakingRequest(BaseModel):
+    language: SpeakingLanguage
+    # Izoh va tavsiyalar yoziladigan til
+    locale: str = "uz_latn"
+    messages: list[ChatMessage] = Field(min_length=1, max_length=60)
+
+
+class SpeakingCorrection(BaseModel):
+    original: str
+    corrected: str
+
+
+class SpeakingAssessment(BaseModel):
+    level: CefrLevel
+    # 0..100; None — bu ko'rsatkich baholanmagan
+    fluency: int | None = None
+    vocabulary: int | None = None
+    grammar: int | None = None
+    coherence: int | None = None
+    summary: str
+    strengths: list[str]
+    improvements: list[str]
+    corrections: list[SpeakingCorrection]
+
+
+class SpeakingAssessReply(BaseModel):
+    assessment: SpeakingAssessment
+    model: str
+    flagged: bool = False
+    usage: Usage = Field(default_factory=Usage)

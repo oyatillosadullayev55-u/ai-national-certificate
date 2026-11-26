@@ -194,6 +194,7 @@ model User {
   progress       StudentProgress[]
   learningPlans  LearningPlan[]
   conversations  AiConversation[]
+  speaking       SpeakingSession[]
   subscriptions  Subscription[]
   notifications  Notification[]
 
@@ -922,11 +923,28 @@ model AiMessage {
   @@map("ai_messages")
 }
 
+/// Ovozli suhbat va til darajasi (CEFR)
+model SpeakingSession {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  language  String // en, ru, uz
+  messages  Json // [{role, content, spoken?}]
+  level     String? // A1..C2 — baholangandan keyin
+  result    Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("speaking_sessions")
+}
+
 model AiUsage {
   id             String   @id @default(uuid()) @db.Uuid
   userId         String   @db.Uuid
   organizationId String?  @db.Uuid
-  feature        String // tutor, explanation, plan
+  feature        String // tutor, explanation, plan, question_gen, speaking
   model          String
   tokensIn       Int
   tokensOut      Int

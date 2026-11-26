@@ -4,6 +4,8 @@
 
 O'zbekistondagi milliy sertifikat imtihoniga tayyorlanish platformasi: testlar, xatolar daftari, bilim xaritasi va Claude asosidagi AI yordamchi.
 
+Joriy holat, bajarilgan ishlar va qolgan vazifalar: [docs/MVP_HOLATI.md](docs/MVP_HOLATI.md).
+
 PRD v1.0 asosida: **Modular Monolith (NestJS) + mustaqil AI Engine (FastAPI) + React admin + Flutter student ilova**.
 
 ## Tezkor start (Windows, bitta buyruq)
@@ -33,6 +35,9 @@ Skript o'rnatishsiz PostgreSQL'ni (port 5433) ishga tushiradi, `.env` fayllarni 
 | **Xato izohi** — ekspert yechimiga tayangan holda | O'quvchi | mobil: natija ekrani |
 | **Shaxsiy o'qish rejasi** — zaif mavzular, natijalar va xatolar asosida 7 kunlik reja | O'quvchi | mobil: Bosh sahifa → AI shaxsiy reja |
 | **AI savol generatori** — mavzu bo'yicha yechimi bilan qoralamalar; ekspert tasdiqlaydi (4 ko'z) | Kontent jamoasi | admin: AI savol yaratish |
+| **Ovozli suhbat va til darajasi** — ingliz / rus / o'zbek tilida suhbat, CEFR (A1–C2) bo'yicha baho va tavsiyalar. Talaffuz baholanmaydi | O'quvchi | mobil: AI Tutor → Ovozli suhbat |
+
+`mock` rejimda suhbat savollari tayyor ro'yxatdan keladi, daraja esa faqat javob uzunligi va so'z boyligidan taxminan hisoblanadi — haqiqiy baholash uchun Claude ulang.
 
 Standart holatda `LLM_PROVIDER=mock` — tashqi API chaqirilmaydi, namunaviy javoblar qaytadi. Claude'ni ulash uchun `services/ai-engine/.env`:
 
